@@ -1,0 +1,125 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Modelo: Usuario (tabla: usuarios) ───────────────────────────────────────
+model Usuario {
+  id            String    @id @default(cuid())
+  nombre        String
+  email         String    @unique
+  contrasena    String
+  rol           Rol       @default(CLIENTE)
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  ordenes  Orden[]
+  carrito  ItemCarrito[]
+
+  @@map("usuarios")
+}
+
+// ── Modelo: Categoria (tabla: categorias) ───────────────────────────────────
+model Categoria {
+  id            String    @id @default(cuid())
+  nombre        String    @unique
+  slug          String    @unique
+  descripcion   String?
+  imagen        String?
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  productos Producto[]
+
+  @@map("categorias")
+}
+
+// ── Modelo: Producto (tabla: productos) ─────────────────────────────────────
+model Producto {
+  id            String   @id @default(cuid())
+  nombre        String
+  slug          String   @unique
+  descripcion   String?  @db.Text
+  precio        Decimal  @db.Decimal(10, 2)
+  stock         Int      @default(0)
+  imagen        String?
+  destacado     Boolean  @default(false)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+
+  itemsOrden   ItemOrden[]
+  itemsCarrito ItemCarrito[]
+
+  @@map("productos")
+}
+
+// ── Modelo: ItemCarrito (tabla: items_carrito) ───────────────────────────────
+model ItemCarrito {
+  id        String   @id @default(cuid())
+  cantidad  Int      @default(1)
+  creadoEn  DateTime @default(now())
+
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, productoId])
+  @@map("items_carrito")
+}
+
+// ── Modelo: Orden (tabla: ordenes) ──────────────────────────────────────────
+model Orden {
+  id            String      @id @default(cuid())
+  total         Decimal     @db.Decimal(10, 2)
+  estado        EstadoOrden @default(PENDIENTE)
+  direccion     String?
+  telefono      String?
+  notas         String?     @db.Text
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  items ItemOrden[]
+
+  @@map("ordenes")
+}
+
+// ── Modelo: ItemOrden (tabla: items_orden) ───────────────────────────────────
+model ItemOrden {
+  id       String  @id @default(cuid())
+  cantidad Int
+  precio   Decimal @db.Decimal(10, 2)
+
+  ordenId    String
+  orden      Orden    @relation(fields: [ordenId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+
+  @@map("items_orden")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────────
+enum Rol {
+  ADMIN
+  CLIENTE
+}
+
+enum EstadoOrden {
+  PENDIENTE
+  PROCESANDO
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
